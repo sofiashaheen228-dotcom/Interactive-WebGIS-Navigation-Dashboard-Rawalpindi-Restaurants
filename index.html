@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Restaurant Navigation Dashboard</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css">
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #eef2f7;
+    color: #1e293b;
+}
+
+header {
+    background: #12345a;
+    color: white;
+    padding: 18px;
+    text-align: center;
+}
+
+header h1 {
+    margin: 0 0 8px;
+    font-size: 24px;
+}
+
+header p {
+    margin: 0;
+    font-size: 14px;
+}
+
+.dashboard {
+    display: flex;
+    gap: 15px;
+    padding: 15px;
+    min-height: 80vh;
+    align-items: flex-start;
+}
+
+.sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    background: white;
+    padding: 18px;
+    border-radius: 12px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+}
+
+.sidebar h2 {
+    font-size: 18px;
+    color: #12345a;
+    margin-top: 0;
+}
+
+.sidebar p {
+    font-size: 13px;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+}
+
+.restaurant-button, .location-button {
+    width: 100%;
+    border: none;
+    border-radius: 7px;
+    padding: 12px;
+    margin-bottom: 10px;
+    color: white;
+    background: #1769aa;
+    cursor: pointer;
+    text-align: left;
+    font-size: 14px;
+}
+
+.restaurant-button:hover { background: #0d4779; }
+
+.location-button {
+    background: #16805d;
+    text-align: center;
+}
+
+.location-button:hover { background: #106647; }
+
+.main-content {
+    flex: 1;
+    min-width: 0;
+}
+
+#mapInfo {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.info-card {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: white;
+    padding: 14px;
+    border-radius: 10px;
+    border-left: 4px solid #1769aa;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+}
+
+.info-icon { font-size: 26px; }
+
+.info-card small {
+    color: #64748b;
+    font-size: 12px;
+}
+
+.info-card h3 {
+    margin: 5px 0 0;
+    color: #12345a;
+    font-size: 19px;
+}
+
+#status {
+    background: white;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    font-size: 13px;
+}
+
+#map {
+    height: 560px;
+    width: 100%;
+    border-radius: 12px;
+    border: 2px solid white;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+}
+
+footer {
+    text-align: center;
+    padding: 15px;
+    font-size: 12px;
+    color: #64748b;
+}
+
+@media (max-width: 1000px) {
+    .dashboard { flex-direction: column; }
+    .sidebar { width: 100%; }
+    .main-content { width: 100%; }
+    #map { height: 450px; }
+}
+
+@media (max-width: 500px) {
+    #mapInfo { flex-direction: column; }
+    header h1 { font-size: 20px; }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>Interactive WebGIS Navigation Dashboard – Rawalpindi Restaurants</h1>
+    <p>Study Area: Rawalpindi, Pakistan</p>
+</header>
+
+<div class="dashboard">
+
+    <!-- Left Sidebar -->
+    <aside class="sidebar">
+        <h2>Restaurant Locations</h2>
+        <p>Select a restaurant to view its location and route.</p>
+
+        <button class="restaurant-button" onclick="showRestaurant('savour')">
+            🍽️ Savour Foods, Rawalpindi
+        </button>
+
+        <button class="restaurant-button" onclick="showRestaurant('kfc')">
+            🍗 KFC Saddar, Rawalpindi
+        </button>
+
+        <button class="location-button" onclick="getCurrentLocation()">
+            📍 Find My Current Location
+        </button>
+    </aside>
+
+    <!-- Map Area -->
+    <main class="main-content">
+
+        <div id="mapInfo">
+            <div class="info-card">
+                <span class="info-icon">📍</span>
+                <div>
+                    <small>Route Distance</small>
+                    <h3 id="distanceValue">-- km</h3>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <span class="info-icon">🚗</span>
+                <div>
+                    <small>Estimated Travel Time</small>
+                    <h3 id="timeValue">-- minutes</h3>
+                </div>
+            </div>
+        </div>
+
+        <div id="status">
+            Click Find My Current Location, then select a restaurant.
+        </div>
+
+        <div id="map"></div>
+    </main>
+
+    <!-- Right Sidebar: Student Information Only -->
+    <aside class="sidebar">
+        <h2>Student Information</h2>
+        <p><strong>Name:</strong> Roshan Ikhlaq</p>
+        <p><strong>ARID No:</strong> 24-ARID-2238</p>
+        <p><strong>Program:</strong> BS Geoinformatics</p>
+        <p><strong>University:</strong> PMAS-Arid Agriculture University, Rawalpindi</p>
+    </aside>
+
+</div>
+
+<footer>
+    WebGIS Lab Project | Restaurant Navigation Dashboard
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
+<script>
+const map = L.map("map").setView([33.6007, 73.0679], 13);
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "&copy; OpenStreetMap contributors",
+    maxZoom: 19
+}).addTo(map);
+
+const restaurants = {
+    savour: {
+        name: "Savour Foods, Rawalpindi",
+        coordinates: [33.6007, 73.0679]
+    },
+    kfc: {
+        name: "KFC Saddar, Rawalpindi",
+        coordinates: [33.5985, 73.0550]
+    }
+};
+
+Object.values(restaurants).forEach(function(restaurant) {
+    L.marker(restaurant.coordinates)
+        .addTo(map)
+        .bindPopup(restaurant.name);
+});
+
+let currentLocationMarker = null;
+let currentCoordinates = null;
+let routeControl = null;
+
+function updateStatus(message) {
+    document.getElementById("status").textContent = message;
+}
+
+function resetRouteInfo() {
+    document.getElementById("distanceValue").textContent = "-- km";
+    document.getElementById("timeValue").textContent = "-- minutes";
+}
+
+function getCurrentLocation() {
+    if (!navigator.geolocation) {
+        updateStatus("Your browser does not support location services.");
+        return;
+    }
+
+    updateStatus("Finding your current location...");
+
+    navigator.geolocation.getCurrentPosition(
+        function(position) {
+            currentCoordinates = [
+                position.coords.latitude,
+                position.coords.longitude
+            ];
+
+            if (currentLocationMarker) {
+                map.removeLayer(currentLocationMarker);
+            }
+
+            currentLocationMarker = L.marker(currentCoordinates)
+                .addTo(map)
+                .bindPopup("Your Current Location")
+                .openPopup();
+
+            map.flyTo(currentCoordinates, 15);
+
+            updateStatus("Current location found. Now select a restaurant.");
+        },
+        function() {
+            updateStatus(
+                "Location unavailable. Allow location permission and try again."
+            );
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0
+        }
+    );
+}
+
+function showRestaurant(restaurantKey) {
+    const restaurant = restaurants[restaurantKey];
+
+    if (!restaurant) {
+        updateStatus("Restaurant not found.");
+        return;
+    }
+
+    map.flyTo(restaurant.coordinates, 15);
+
+    L.popup()
+        .setLatLng(restaurant.coordinates)
+        .setContent(restaurant.name)
+        .openOn(map);
+
+    if (!currentCoordinates) {
+        updateStatus(
+            "Restaurant selected. Click Find My Current Location first to calculate the route."
+        );
+        return;
+    }
+
+    drawRoute(restaurant);
+}
+
+function drawRoute(restaurant) {
+    if (routeControl) {
+        map.removeControl(routeControl);
+        routeControl = null;
+    }
+
+    resetRouteInfo();
+    updateStatus("Calculating route...");
+
+    routeControl = L.Routing.control({
+        waypoints: [
+            L.latLng(currentCoordinates[0], currentCoordinates[1]),
+            L.latLng(
+                restaurant.coordinates[0],
+                restaurant.coordinates[1]
+            )
+        ],
+        lineOptions: {
+            styles: [{
+                color: "#1769aa",
+                opacity: 0.85,
+                weight: 6
+            }]
+        },
+        addWaypoints: false,
+        draggableWaypoints: false,
+        fitSelectedRoutes: true,
+        show: false,
+        createMarker: function() {
+            return null;
+        }
+    }).addTo(map);
+
+    routeControl.on("routesfound", function(event) {
+        const route = event.routes[0];
+        const distanceKm = (
+            route.summary.totalDistance / 1000
+        ).toFixed(2);
+        const timeMin = Math.round(
+            route.summary.totalTime / 60
+        );
+
+        document.getElementById("distanceValue").textContent =
+            distanceKm + " km";
+
+        document.getElementById("timeValue").textContent =
+            timeMin + " minutes";
+
+        updateStatus(
+            "Route to " + restaurant.name + " calculated successfully."
+        );
+    });
+
+    routeControl.on("routingerror", function() {
+        updateStatus(
+            "Route could not be calculated. Check your internet connection and try again."
+        );
+    });
+}
+</script>
+
+</body>
+</html>
